@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+
+# Database files (local SQLite only)
+data/*.db
+data/*.db-journal
+data/*.db-shm
+data/*.db-wal
+
+# Scan cache
+data/last_scan.pkl
+data/last_scan_info.json
+
+# Streamlit secrets (IMPORTANT!)
+.streamlit/secrets.toml
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+.cache/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Keep template files and .gitkeep
+!data/.gitkeep
+!.streamlit/secrets.toml.template
+
+# CSV exports (user data)
+*.csv
+!watchlist_template.csv
+!data/tickers.csv
+
+# Test files
+.pytest_cache/
+.coverage
+htmlcov/
