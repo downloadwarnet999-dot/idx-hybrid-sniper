@@ -208,8 +208,11 @@ class MarketDatabase:
         query = "SELECT MAX(date) as last_date FROM market_data WHERE ticker = ?"
         result = db_manager.execute_query(query, (ticker,), fetch='one')
 
-        if result and result[0]:
-            return pd.to_datetime(result[0])
+        if result:
+            # Handle both tuple (SQLite) and dict (PostgreSQL) results
+            last_date = result[0] if isinstance(result, tuple) else result.get('last_date')
+            if last_date:
+                return pd.to_datetime(last_date)
         return None
 
     def get_all_tickers(self) -> List[str]:
@@ -450,47 +453,57 @@ class JournalDatabase:
 
     def get_statistics(self) -> dict:
         """Get trading statistics"""
+        # Helper function to extract value from result (handles both tuple and dict)
+        def get_value(result, key=0):
+            if not result:
+                return None
+            return result[key] if isinstance(result, tuple) else list(result.values())[0]
+
         # Total trades
         result = db_manager.execute_query(
             "SELECT COUNT(*) FROM trading_journal WHERE status = 'CLOSED'",
             fetch='one'
         )
-        total_trades = result[0] if result else 0
+        total_trades = get_value(result) or 0
 
         # Win rate
         result = db_manager.execute_query(
             "SELECT COUNT(*) FROM trading_journal WHERE status = 'CLOSED' AND pnl_percent > 0",
             fetch='one'
         )
-        winning_trades = result[0] if result else 0
+        winning_trades = get_value(result) or 0
 
         # Average P&L
         result = db_manager.execute_query(
             "SELECT AVG(pnl_percent) FROM trading_journal WHERE status = 'CLOSED'",
             fetch='one'
         )
-        avg_pnl = float(result[0]) if result and result[0] is not None else 0
+        avg_pnl_val = get_value(result)
+        avg_pnl = float(avg_pnl_val) if avg_pnl_val is not None else 0
 
         # Total P&L
         result = db_manager.execute_query(
             "SELECT SUM(pnl_amount) FROM trading_journal WHERE status = 'CLOSED'",
             fetch='one'
         )
-        total_pnl = float(result[0]) if result and result[0] is not None else 0
+        total_pnl_val = get_value(result)
+        total_pnl = float(total_pnl_val) if total_pnl_val is not None else 0
 
         # Best trade
         result = db_manager.execute_query(
             "SELECT MAX(pnl_percent) FROM trading_journal WHERE status = 'CLOSED'",
             fetch='one'
         )
-        best_trade = float(result[0]) if result and result[0] is not None else 0
+        best_trade_val = get_value(result)
+        best_trade = float(best_trade_val) if best_trade_val is not None else 0
 
         # Worst trade
         result = db_manager.execute_query(
             "SELECT MIN(pnl_percent) FROM trading_journal WHERE status = 'CLOSED'",
             fetch='one'
         )
-        worst_trade = float(result[0]) if result and result[0] is not None else 0
+        worst_trade_val = get_value(result)
+        worst_trade = float(worst_trade_val) if worst_trade_val is not None else 0
 
         win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
 
