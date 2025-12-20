@@ -51,6 +51,10 @@ data/*.db-wal
 data/last_scan.pkl
 data/last_scan_info.json
 
+# Watchlist data files
+data/tickers.json
+data/tickers.json.old
+
 # Streamlit secrets (IMPORTANT!)
 .streamlit/secrets.toml
 
