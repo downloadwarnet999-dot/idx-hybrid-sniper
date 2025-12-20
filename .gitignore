@@ -75,7 +75,6 @@ Thumbs.db
 # CSV exports (user data)
 *.csv
 !watchlist_template.csv
-!data/tickers.csv
 
 # Test files
 .pytest_cache/
