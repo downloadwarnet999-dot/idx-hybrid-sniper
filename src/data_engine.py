@@ -17,6 +17,7 @@ from config.settings import (
     YFINANCE_PERIOD, YFINANCE_INTERVAL
 )
 from src.database import market_db
+from src.db_manager import db_manager
 
 
 class DataEngine:
@@ -25,65 +26,199 @@ class DataEngine:
     def __init__(self):
         self.db = market_db
         self.tickers_file = TICKERS_FILE
-        self._ensure_tickers_file()
+        self._init_watchlist()
 
-    def _ensure_tickers_file(self):
-        """Create tickers file if not exists"""
-        if not self.tickers_file.exists():
-            # Default IDX blue chip stocks
+    def _init_watchlist(self):
+        """Initialize watchlist (database or file fallback)"""
+        # Try to create watchlist table
+        try:
+            db_manager.init_watchlist_table()
+
+            # Migrate from JSON to database if needed
+            self._migrate_json_to_db()
+
+        except Exception as e:
+            print(f"Warning: Could not init watchlist table: {e}")
+            # Fallback to file-based if database fails
+            self._ensure_tickers_file()
+
+    def _migrate_json_to_db(self):
+        """Migrate tickers from JSON file to database (one-time)"""
+        # Check if database already has tickers
+        try:
+            existing = db_manager.execute_query(
+                "SELECT COUNT(*) FROM watchlist",
+                fetch='one'
+            )
+
+            if existing and existing[0] > 0:
+                return  # Already migrated
+
+        except:
+            pass
+
+        # Load from JSON
+        if self.tickers_file.exists():
+            try:
+                with open(self.tickers_file, 'r') as f:
+                    data = json.load(f)
+                    tickers = data.get('tickers', [])
+
+                # Insert into database
+                if tickers:
+                    print(f"Migrating {len(tickers)} tickers from JSON to database...")
+                    for ticker in tickers:
+                        try:
+                            query = "INSERT INTO watchlist (ticker) VALUES (?) ON CONFLICT (ticker) DO NOTHING"
+                            db_manager.execute_query(query, (ticker,))
+                        except:
+                            pass
+                    print("Migration complete!")
+
+            except Exception as e:
+                print(f"Migration failed: {e}")
+        else:
+            # Add default tickers if none exist
             default_tickers = [
                 'BBCA', 'BBRI', 'BMRI', 'BBNI', 'TLKM',
                 'ASII', 'UNVR', 'ICBP', 'INDF', 'KLBF',
                 'ADRO', 'ITMG', 'PTBA', 'ANTM', 'INCO',
                 'BSDE', 'PWON', 'SMGR', 'WIKA', 'PTPP'
             ]
+            for ticker in default_tickers:
+                try:
+                    query = "INSERT INTO watchlist (ticker) VALUES (?) ON CONFLICT (ticker) DO NOTHING"
+                    db_manager.execute_query(query, (ticker,))
+                except:
+                    pass
 
-            self.save_tickers(default_tickers)
+    def _ensure_tickers_file(self):
+        """Create tickers file if not exists (fallback)"""
+        if not self.tickers_file.exists():
+            default_tickers = [
+                'BBCA', 'BBRI', 'BMRI', 'BBNI', 'TLKM',
+                'ASII', 'UNVR', 'ICBP', 'INDF', 'KLBF',
+                'ADRO', 'ITMG', 'PTBA', 'ANTM', 'INCO',
+                'BSDE', 'PWON', 'SMGR', 'WIKA', 'PTPP'
+            ]
+            self._save_tickers_to_file(default_tickers)
 
     def get_tickers(self) -> List[str]:
-        """Load tickers from JSON file"""
+        """Load tickers from database (or JSON fallback)"""
+        # Try database first
+        try:
+            query = "SELECT ticker FROM watchlist ORDER BY ticker"
+            results = db_manager.execute_query(query, fetch='all')
+
+            if results:
+                return [row[0] if isinstance(row, tuple) else row['ticker'] for row in results]
+
+            return []
+
+        except Exception as e:
+            # Fallback to JSON file
+            return self._get_tickers_from_file()
+
+    def _get_tickers_from_file(self) -> List[str]:
+        """Load tickers from JSON file (fallback)"""
         if not self.tickers_file.exists():
             return []
 
-        with open(self.tickers_file, 'r') as f:
-            data = json.load(f)
-
-        return data.get('tickers', [])
+        try:
+            with open(self.tickers_file, 'r') as f:
+                data = json.load(f)
+            return data.get('tickers', [])
+        except:
+            return []
 
     def save_tickers(self, tickers: List[str]):
-        """Save tickers to JSON file"""
-        self.tickers_file.parent.mkdir(parents=True, exist_ok=True)
+        """Save tickers to database (and JSON backup)"""
+        # Save to database
+        try:
+            # Clear existing
+            db_manager.execute_query("DELETE FROM watchlist")
 
-        data = {
-            'tickers': sorted(list(set(tickers))),  # Remove duplicates and sort
-            'updated_at': datetime.now().isoformat()
-        }
+            # Insert new
+            for ticker in sorted(list(set(tickers))):
+                query = "INSERT INTO watchlist (ticker) VALUES (?)"
+                db_manager.execute_query(query, (ticker,))
 
-        with open(self.tickers_file, 'w') as f:
-            json.dump(data, f, indent=2)
+        except Exception as e:
+            print(f"Warning: Could not save to database: {e}")
+
+        # Also save to JSON as backup
+        self._save_tickers_to_file(tickers)
+
+    def _save_tickers_to_file(self, tickers: List[str]):
+        """Save tickers to JSON file (backup)"""
+        try:
+            self.tickers_file.parent.mkdir(parents=True, exist_ok=True)
+
+            data = {
+                'tickers': sorted(list(set(tickers))),
+                'updated_at': datetime.now().isoformat()
+            }
+
+            with open(self.tickers_file, 'w') as f:
+                json.dump(data, f, indent=2)
+        except:
+            pass
 
     def add_ticker(self, ticker: str) -> bool:
         """Add a new ticker to watchlist"""
-        tickers = self.get_tickers()
+        # Try database first
+        try:
+            # Check if already exists
+            query = "SELECT COUNT(*) FROM watchlist WHERE ticker = ?"
+            result = db_manager.execute_query(query, (ticker,), fetch='one')
 
-        if ticker not in tickers:
-            tickers.append(ticker)
-            self.save_tickers(tickers)
+            if result and result[0] > 0:
+                return False  # Already exists
+
+            # Insert
+            query = "INSERT INTO watchlist (ticker) VALUES (?)"
+            db_manager.execute_query(query, (ticker,))
+
+            # Update JSON backup
+            tickers = self.get_tickers()
+            self._save_tickers_to_file(tickers)
+
             return True
 
-        return False
+        except Exception as e:
+            # Fallback to file-based
+            tickers = self._get_tickers_from_file()
+            if ticker not in tickers:
+                tickers.append(ticker)
+                self._save_tickers_to_file(tickers)
+                return True
+            return False
 
     def remove_ticker(self, ticker: str) -> bool:
         """Remove ticker from watchlist"""
-        tickers = self.get_tickers()
+        # Try database first
+        try:
+            query = "DELETE FROM watchlist WHERE ticker = ?"
+            rowcount = db_manager.execute_query(query, (ticker,))
 
-        if ticker in tickers:
-            tickers.remove(ticker)
-            self.save_tickers(tickers)
+            # Also delete market data
             self.db.delete_ticker(ticker + IDX_SUFFIX)
-            return True
 
-        return False
+            # Update JSON backup
+            tickers = self.get_tickers()
+            self._save_tickers_to_file(tickers)
+
+            return rowcount > 0
+
+        except Exception as e:
+            # Fallback to file-based
+            tickers = self._get_tickers_from_file()
+            if ticker in tickers:
+                tickers.remove(ticker)
+                self._save_tickers_to_file(tickers)
+                self.db.delete_ticker(ticker + IDX_SUFFIX)
+                return True
+            return False
 
     def import_from_csv(self, csv_path: str, replace: bool = False) -> Tuple[int, List[str]]:
         """

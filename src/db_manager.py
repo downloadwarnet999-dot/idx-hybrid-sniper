@@ -284,10 +284,39 @@ class DatabaseManager:
 
         self.execute_query(query)
 
+    def init_watchlist_table(self):
+        """Initialize watchlist table"""
+        if self.db_type == 'postgresql':
+            # PostgreSQL schema
+            query = """
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    id SERIAL PRIMARY KEY,
+                    ticker VARCHAR(20) NOT NULL UNIQUE,
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    notes TEXT
+                )
+            """
+        else:
+            # SQLite schema
+            query = """
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ticker TEXT NOT NULL UNIQUE,
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    notes TEXT
+                )
+            """
+
+        self.execute_query(query)
+
+        # Create index
+        self.execute_query("CREATE INDEX IF NOT EXISTS idx_ticker_watchlist ON watchlist(ticker)")
+
     def init_all_tables(self):
         """Initialize all database tables"""
         self.init_market_data_table()
         self.init_journal_table()
+        self.init_watchlist_table()
 
 
 # Global database manager instance
