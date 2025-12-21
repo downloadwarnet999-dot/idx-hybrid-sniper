@@ -191,6 +191,12 @@ class MarketDatabase:
             df['date'] = pd.to_datetime(df['date'])
             df = df.set_index('date')
 
+            # Convert Decimal to float for PostgreSQL compatibility
+            numeric_columns = ['open', 'high', 'low', 'close', 'volume', 'adj_close']
+            for col in numeric_columns:
+                if col in df.columns:
+                    df[col] = df[col].astype(float)
+
             # Rename columns back to standard format
             df = df.rename(columns={
                 'open': 'Open',
