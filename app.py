@@ -1,3 +1,4 @@
+from src.database import market_db
 """
 IDX Hybrid Sniper - Streamlit Web Dashboard
 Interactive trading dashboard with screener, analysis, and journal
