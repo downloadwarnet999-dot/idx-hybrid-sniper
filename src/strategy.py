@@ -298,13 +298,13 @@ class HybridSniperStrategy:
         in_fvg_zone = (current_price >= bullish_fvg['bottom'] and
                        current_price <= bullish_fvg['top'])
 
-        # Relaxed mode: check if price is within 10% distance from FVG
+        # Relaxed mode: check if price is within 15% distance from FVG
         if not strict_mode and not in_fvg_zone:
             fvg_distance_pct = abs(current_price - bullish_fvg['top']) / bullish_fvg['top'] * 100
 
-            if fvg_distance_pct > 10:
+            if fvg_distance_pct > 15:
                 if debug:
-                    print(f"  ❌ SMC: Price {fvg_distance_pct:.1f}% away from FVG (>10%)")
+                    print(f"  ❌ SMC: Price {fvg_distance_pct:.1f}% away from FVG (>15%)")
                 return None
         elif strict_mode and not in_fvg_zone:
             if debug:
@@ -583,17 +583,17 @@ class HybridSniperStrategy:
                 print(f"  ❌ Momentum: Price {current_price:.0f} < HMA {latest['hma']:.0f}")
             return None
 
-        # 2. Price near HMA (support test) - RELAXED to 5%
+        # 2. Price near HMA (support test) - RELAXED to 8%
         distance_to_hma = abs(current_price - latest['hma']) / latest['hma']
-        if distance_to_hma > 0.05:  # More than 5% away (relaxed from 2%)
+        if distance_to_hma > 0.08:  # More than 8% away (relaxed from 2%)
             if debug:
-                print(f"  ❌ Momentum: Distance to HMA {distance_to_hma*100:.1f}% > 5%")
+                print(f"  ❌ Momentum: Distance to HMA {distance_to_hma*100:.1f}% > 8%")
             return None
 
-        # 3. Stochastic pullback zone - RELAXED to 60
-        if latest['stoch_k'] > 60:  # Relaxed from 40 to allow more entries
+        # 3. Stochastic pullback zone - RELAXED to 75
+        if latest['stoch_k'] > 75:  # Relaxed from 40 to allow more entries
             if debug:
-                print(f"  ❌ Momentum: Stoch {latest['stoch_k']:.1f} > 60 (too high)")
+                print(f"  ❌ Momentum: Stoch {latest['stoch_k']:.1f} > 75 (too high)")
             return None
 
         # 4. Stochastic momentum up - SIMPLIFIED (just K > D)
