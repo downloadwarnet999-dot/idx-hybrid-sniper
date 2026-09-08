@@ -202,12 +202,12 @@ python main.py scan''', language="bash")
 - 🔵🟠 Stochastic K & D
 
 **Entry Checklist (SMC):**
-```
-✅ Price in FVG zone
-✅ SuperTrend green
-✅ Volume LOW
-✅ RS > 0%
-```''')
+
+    ✅ Price in FVG zone
+    ✅ SuperTrend green
+    ✅ Volume LOW
+    ✅ RS > 0%
+''')
 
     with tab3:
         st.markdown('''**Purpose:** Track performance
@@ -223,10 +223,10 @@ python main.py scan''', language="bash")
 3. Click `Close Trade`
 
 **Position Sizing:**
-```
-Risk = Capital × 2%
-Size = Risk / (Entry - SL)
-```''')
+
+    Risk = Capital × 2%
+    Size = Risk / (Entry - SL)
+''')
 
     st.markdown("---")
 
@@ -385,6 +385,10 @@ elif page == "📊 Market Screener":
         )
 
     if scan_button:
+        # === GOD-MODE PATCH: auto-update from Yahoo BEFORE scanning ===
+        with st.spinner("🔄 Updating data dari Yahoo Finance (incremental)..."):
+            data_engine.update_all_tickers()
+        # =============================================================
         with st.spinner(f"Scanning {len(tickers)} stocks..."):
             # Scan all tickers
             signals = strategy.scan_tickers(tickers, data_engine)
@@ -592,22 +596,20 @@ elif page == "📈 Chart Analysis":
         - 🔵🟠 **Stochastic** → K (blue) & D (orange) - oversold < 20, overbought > 80
 
         **SMC Entry Checklist:**
-        ```
-        ✅ Price approaching/in blue FVG box
-        ✅ SuperTrend dots = Green
-        ✅ Volume bars < Volume MA (LOW = best)
-        ✅ Price above HMA60
-        → READY FOR ENTRY!
-        ```
+
+            ✅ Price approaching/in blue FVG box
+            ✅ SuperTrend dots = Green
+            ✅ Volume bars < Volume MA (LOW = best)
+            ✅ Price above HMA60
+            → READY FOR ENTRY!
 
         **Momentum Entry Checklist:**
-        ```
-        ✅ Price bouncing from HMA60 line
-        ✅ SuperTrend = Green
-        ✅ Stochastic K crossing above D
-        ✅ Stochastic < 60
-        → READY FOR ENTRY!
-        ```
+
+            ✅ Price bouncing from HMA60 line
+            ✅ SuperTrend = Green
+            ✅ Stochastic K crossing above D
+            ✅ Stochastic < 60
+            → READY FOR ENTRY!
         ''')
 
     # Ticker selection
@@ -787,20 +789,19 @@ elif page == "📔 Trading Journal":
         7. Trade moves to **Closed Trades**
 
         **Position Sizing Formula:**
-        ```python
-        # Risk 2% per trade
-        capital = 100_000_000  # Your capital
-        risk_percent = 0.02    # 2%
 
-        entry = 1000
-        stop_loss = 950
+            # Risk 2% per trade
+            capital = 100_000_000  # Your capital
+            risk_percent = 0.02    # 2%
 
-        risk_per_share = entry - stop_loss  # 50
-        risk_amount = capital * risk_percent  # 2M
+            entry = 1000
+            stop_loss = 950
 
-        position_size = risk_amount / risk_per_share
-        # = 2,000,000 / 50 = 40,000 shares
-        ```
+            risk_per_share = entry - stop_loss  # 50
+            risk_amount = capital * risk_percent  # 2M
+
+            position_size = risk_amount / risk_per_share
+            # = 2,000,000 / 50 = 40,000 shares
 
         **Best Practices:**
         - ✅ Log EVERY trade (wins AND losses)
@@ -989,10 +990,10 @@ elif page == "⚙️ Settings":
         col1, col2 = st.columns(2)
         with col1:
             risk_percent = st.number_input("Risk Per Trade (%)", min_value=0.1, max_value=10.0, value=float(current_config.get("RISK_PERCENT", 2.0)), step=0.1, help="Percentage of total capital to risk per trade")
-            sl_atr = st.number_input("Stop Loss ATR Multiplier", min_value=1.0, max_value=5.0, value=float(current_config.get("SL_ATR_MULTIPLIER", 2.0)), step=0.1, help="Multiplier for ATR to set initial Stop Loss")
+            sl_atr = st.number_input("Stop Loss ATR Multiplier", min_value=1.0, max_value=5.0, value=float(current_config.get("SL_ATR_MULTIPLIER", 2.0)), step=0.1, help="Multiplier of ATR to set initial Stop Loss")
         with col2:
             min_liquidity = st.number_input("Min Daily Liquidity (IDR)", min_value=1_000_000_000, value=int(current_config.get("MIN_LIQUIDITY_IDR", 5_000_000_000)), step=500_000_000, help="Minimum average daily transaction value")
-            tp1_atr = st.number_input("TP1 ATR Multiplier", min_value=1.0, max_value=10.0, value=float(current_config.get("TP1_ATR_MULTIPLIER", 3.0)), step=0.1, help="Multiplier for ATR to set Take Profit 1")
+            tp1_atr = st.number_input("TP1 ATR Multiplier", min_value=1.0, max_value=10.0, value=float(current_config.get("TP1_ATR_MULTIPLIER", 3.0)), step=0.1, help="Multiplier of ATR to set Take Profit 1")
             
         st.subheader("📊 Indicators & Filters")
         col3, col4 = st.columns(2)
@@ -1015,7 +1016,7 @@ elif page == "⚙️ Settings":
             config_mgr.set("VOLUME_LOW_THRESHOLD", vol_low)
             config_mgr.set("RS_STRONG", rs_strong)
             
-            st.success("✅ Settings saved successfully! Please restart the application to apply changes fully.")
+            st.success("✅ Settings saved successfully. Please restart the application to apply changes fully.")
             st.balloons()
             
     if st.button("↺ Reset to Defaults"):
@@ -1031,4 +1032,4 @@ st.markdown(
     "IDX Hybrid Sniper v2.0 | Buy on Weakness, Sell on Strength, Ride the Monster Trend"
     "</div>",
     unsafe_allow_html=True
-)
+                   )
