@@ -1,12 +1,7 @@
 """
-IDX Hybrid Sniper - Data Engine (FINAL CANONICAL v4)
-Smart data fetching with incremental updates from yfinance.
-Fixes included:
-  - yfinance MultiIndex columns flattened ('Close','BBCA.JK') -> 'Close'
-  - Postgres lowercase columns standardized ('close') -> 'Close'
-  - Incremental date-window uses exclusive end (tomorrow) so today's candle is included
-  - IHSG auto-refresh when outdated (no more frozen index)
-  - tuple/list-safe row handling for pg8000 AND psycopg2
+IDX Hybrid Sniper - Data Engine (FINAL CANONICAL v4.1)
+Fix v4.1: DataFrame truth-value bug ('if not data:') replaced with
+          'if data is None or data.empty:' (2 places).
 """
 
 import yfinance as yf
@@ -32,10 +27,8 @@ def _flatten(df):
     if df is None or getattr(df, 'empty', True):
         return df
     try:
-        # 1) Kill yfinance MultiIndex columns: ('Close','BBCA.JK') -> 'Close'
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
-        # 2) Standardize Postgres lowercase columns: 'close' -> 'Close'
         rename_map = {
             'date': 'Date', 'open': 'Open', 'high': 'High', 'low': 'Low',
             'close': 'Close', 'volume': 'Volume',
@@ -43,10 +36,8 @@ def _flatten(df):
         }
         df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns}, inplace=True)
         df.columns = [c.title() for c in df.columns]
-        # 3) Guarantee Adj Close exists (database saver expects it)
         if 'Adj Close' not in df.columns and 'Close' in df.columns:
             df['Adj Close'] = df['Close']
-        # 4) Ensure DatetimeIndex named 'Date'
         if 'Date' in df.columns and not isinstance(df.index, pd.DatetimeIndex):
             df['Date'] = pd.to_datetime(df['Date'])
             df.set_index('Date', inplace=True)
@@ -216,11 +207,11 @@ class DataEngine:
                         return True, f"{ticker}: Already up to date"
                     # end is EXCLUSIVE in yfinance -> use tomorrow to include today
                     data = self.fetch_data(ticker, start_date=start, end_date=tomorrow)
-                    if not data:
+                    if data is None or data.empty:
                         return True, f"{ticker}: No new data"
                     return True, f"{ticker}: Added {self.db.save_data(fmt, data)} rows"
             data = self.fetch_data(ticker, period=YFINANCE_PERIOD)
-            if not data:
+            if data is None or data.empty:
                 return False, f"{ticker}: Failed"
             self.db.delete_ticker(fmt)
             return True, f"{ticker}: Saved {self.db.save_data(fmt, data)} rows"
@@ -244,7 +235,6 @@ class DataEngine:
     def get_ihsg_data(self, start_date: Optional[str] = None,
                       end_date: Optional[str] = None) -> Optional[pd.DataFrame]:
         df = _flatten(self.db.get_data(IHSG_SYMBOL, start_date, end_date))
-        # Auto-refresh when outdated (keeps IHSG in sync with stocks)
         if df is not None and not df.empty and start_date is None:
             try:
                 start = (df.index[-1] + timedelta(days=1)).strftime('%Y-%m-%d')
