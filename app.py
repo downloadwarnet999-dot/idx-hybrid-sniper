@@ -385,11 +385,8 @@ elif page == "📊 Market Screener":
         )
 
     if scan_button:
-        # === GOD-MODE PATCH: auto-update from Yahoo BEFORE scanning ===
-        with st.spinner("🔄 Updating data dari Yahoo Finance (incremental)..."):
-            data_engine.update_all_tickers()
-        # =============================================================
-        with st.spinner(f"Scanning {len(tickers)} stocks..."):
+        st.info("📡 **Fast Scan Mode:** Scanning langsung dari database Supabase. Untuk update live Yahoo Finance, gunakan command Telegram `scan market` atau tunggu auto-update 17:15 WIB.")
+        with st.spinner(f"Scanning {len(tickers)} stocks from database..."):
             # Scan all tickers
             signals = strategy.scan_tickers(tickers, data_engine)
             scan_time = datetime.now()
@@ -467,6 +464,34 @@ elif page == "📊 Market Screener":
                 height=400,
                 hide_index=True
             )
+
+            # === PROFESSIONAL EXPORT BUTTONS ===
+            col_dl1, col_dl2, _ = st.columns([1, 1, 4])
+            with col_dl1:
+                csv_data = display_df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button(
+                    label="📥 Download CSV",
+                    data=csv_data,
+                    file_name=f"idx_signals_{scan_time.strftime('%Y%m%d_%H%M')}.csv",
+                    mime="text/csv",
+                )
+            with col_dl2:
+                h = "<html><head><meta charset='utf-8'><title>IDX Signals</title>"
+                h += "<style>body{font-family:Arial,sans-serif;margin:24px;}"
+                h += "h1{color:#0f4c81;}table{border-collapse:collapse;width:100%;}"
+                h += "th{background:#0f4c81;color:#fff;padding:8px;text-align:left;}"
+                h += "td{border:1px solid #ddd;padding:6px;}"
+                h += "tr:nth-child(even){background:#f4f8fc;}</style></head><body>"
+                h += f"<h1>🎯 IDX Sniper Signals - {scan_time.strftime('%Y-%m-%d %H:%M')} WIB</h1>"
+                h += display_df.to_html(index=False, border=0, classes='table')
+                h += "</body></html>"
+                st.download_button(
+                    label="🌐 Download HTML",
+                    data=h.encode('utf-8'),
+                    file_name=f"idx_signals_{scan_time.strftime('%Y%m%d_%H%M')}.html",
+                    mime="text/html",
+                )
+            # ===================================
 
             # Expandable details for each signal
             st.markdown("### 🔍 Signal Details Inspector")
@@ -1032,4 +1057,4 @@ st.markdown(
     "IDX Hybrid Sniper v2.0 | Buy on Weakness, Sell on Strength, Ride the Monster Trend"
     "</div>",
     unsafe_allow_html=True
-                   )
+)
